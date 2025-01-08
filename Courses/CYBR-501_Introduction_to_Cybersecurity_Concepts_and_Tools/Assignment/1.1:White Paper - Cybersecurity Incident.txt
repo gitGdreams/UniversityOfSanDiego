@@ -40,3 +40,6 @@ citation resources.
 
 
 
+Reference:
+https://www.cisa.gov/news-events/alerts/2024/07/19/widespread-it-outage-due-crowdstrike-update
+
